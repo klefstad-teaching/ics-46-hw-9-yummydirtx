@@ -38,3 +38,23 @@ vector<int> dijkstra_shortest_path(const Graph& G, int source, vector<int>& prev
     
     return distance;
 }
+
+vector<int> extract_shortest_path(const vector<int>& distances, const vector<int>& previous, int destination) {
+    vector<int> path;
+    
+    // Check if destination is reachable
+    if (distances[destination] == INF) {
+        return path;  // Return empty path if unreachable
+    }
+    
+    // Backtrack from destination to source using previous array
+    for (int vertex = destination; vertex != -1; vertex = previous[vertex]) {
+        path.push_back(vertex);
+    }
+    
+    // Reverse to get path from source to destination
+    reverse(path.begin(), path.end());
+    
+    return path;
+}
+
