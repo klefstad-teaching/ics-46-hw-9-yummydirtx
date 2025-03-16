@@ -1,5 +1,6 @@
 #include "ladder.h"
 #include <unordered_set>
+#include <unordered_map>
 
 // Print error message for invalid input
 void error(string word1, string word2, string msg) {
