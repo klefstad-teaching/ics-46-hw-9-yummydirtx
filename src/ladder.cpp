@@ -69,7 +69,7 @@ vector<string> generate_word_ladder(const string& begin_word, const string& end_
     
     // Check if begin and end are the same
     if (begin == end) {
-        return {begin};
+        return {};  // Return empty vector when words are identical
     }
     
     // Pre-process dictionary: create a vector of lowercase words
