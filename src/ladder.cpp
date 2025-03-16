@@ -1,4 +1,5 @@
 #include "ladder.h"
+#include <unordered_set>
 
 // Print error message for invalid input
 void error(string word1, string word2, string msg) {
@@ -57,7 +58,7 @@ bool is_adjacent(const string& word1, const string& word2) {
     return edit_distance_within(word1, word2, 1);
 }
 
-// Generate word ladder using BFS
+// Generate word ladder using optimized BFS
 vector<string> generate_word_ladder(const string& begin_word, const string& end_word, const set<string>& word_list) {
     // Convert words to lowercase for case-insensitive comparison
     string begin = begin_word;
@@ -70,44 +71,96 @@ vector<string> generate_word_ladder(const string& begin_word, const string& end_
         return {begin};
     }
     
-    // Initialize queue for BFS
-    queue<vector<string>> ladder_queue;
-    ladder_queue.push({begin});
+    // Pre-process dictionary: create a vector of lowercase words
+    vector<string> dict_words;
+    dict_words.reserve(word_list.size());
+    for (const string& word : word_list) {
+        string lower_word = word;
+        for (char& c : lower_word) c = tolower(c);
+        dict_words.push_back(lower_word);
+    }
     
-    // Set to keep track of visited words
-    set<string> visited;
+    // Build adjacency list for common word lengths
+    unordered_map<int, vector<int>> length_to_indices;
+    for (size_t i = 0; i < dict_words.size(); i++) {
+        int len = dict_words[i].length();
+        length_to_indices[len].push_back(i);
+        length_to_indices[len-1].push_back(i);  // For words one letter shorter
+        length_to_indices[len+1].push_back(i);  // For words one letter longer
+    }
+    
+    // Use a more efficient BFS approach
+    queue<int> word_queue;  // Store indices instead of strings
+    unordered_map<string, int> word_to_index;
+    for (size_t i = 0; i < dict_words.size(); i++) {
+        word_to_index[dict_words[i]] = i;
+    }
+    
+    // Map to track parent words (for reconstructing path)
+    unordered_map<string, string> parent;
+    
+    // Track visited words
+    unordered_set<string> visited;
     visited.insert(begin);
     
-    while (!ladder_queue.empty()) {
-        vector<string> ladder = ladder_queue.front();
-        ladder_queue.pop();
+    // Start BFS
+    queue<string> q;
+    q.push(begin);
+    
+    bool found = false;
+    while (!q.empty() && !found) {
+        string current = q.front();
+        q.pop();
         
-        string last_word = ladder.back();
+        int current_len = current.length();
         
-        // Check the entire word list for adjacent words
-        for (const string& word : word_list) {
-            string lower_word = word;
-            for (char& c : lower_word) c = tolower(c);
+        // Only check words with similar length (current_len, current_len+1, current_len-1)
+        for (int len = max(1, current_len - 1); len <= current_len + 1; len++) {
+            if (length_to_indices.find(len) == length_to_indices.end()) continue;
             
-            if (is_adjacent(last_word, lower_word)) {
-                if (visited.find(lower_word) == visited.end()) {
-                    visited.insert(lower_word);
+            for (int idx : length_to_indices[len]) {
+                const string& next_word = dict_words[idx];
+                
+                // Skip already visited words
+                if (visited.count(next_word)) continue;
+                
+                // Check if adjacent
+                if (is_adjacent(current, next_word)) {
+                    visited.insert(next_word);
+                    parent[next_word] = current;
                     
-                    vector<string> new_ladder = ladder;
-                    new_ladder.push_back(lower_word);
-                    
-                    if (lower_word == end) {
-                        return new_ladder;  // Found the target word
+                    if (next_word == end) {
+                        found = true;
+                        break;
                     }
                     
-                    ladder_queue.push(new_ladder);
+                    q.push(next_word);
                 }
             }
+            
+            if (found) break;
         }
     }
     
-    // No ladder found
-    return {};
+    // Reconstruct path if found
+    if (!visited.count(end)) {
+        return {};  // No path found
+    }
+    
+    vector<string> ladder;
+    for (string word = end; !word.empty(); word = parent[word]) {
+        ladder.push_back(word);
+    }
+    
+    // Add start word if not already in the path
+    if (ladder.back() != begin) {
+        ladder.push_back(begin);
+    }
+    
+    // Reverse to get path from start to end
+    reverse(ladder.begin(), ladder.end());
+    
+    return ladder;
 }
 
 // Load words from dictionary file
